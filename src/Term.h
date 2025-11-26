@@ -31,7 +31,7 @@ namespace Netlist {
             bool                    isInternal      () const ;
             bool                    isExternal      () const ;
             const std::string &     getName         () const ;
-            Node*                   getNode         ();
+            NodeTerm*                   getNode         ();
             Net*                    getNet          () const ;
             Cell*                   getCell         () const ;
             Cell*                   getOwnerCell    () const ;
@@ -52,7 +52,7 @@ namespace Netlist {
             Direction       direction_;
             Type            type_;
             Net*            net_;
-            Node            node_;
+            NodeTerm            node_;
     };
 }
 #endif

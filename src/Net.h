@@ -10,6 +10,7 @@
 namespace Netlist {
     class Cell;
     class Node;
+    std::vector<Line*> lines_;
 
     class Net {
         private:
@@ -39,6 +40,9 @@ namespace Netlist {
                     bool                      remove          (Node*);
                     void                      toXml           (std::ostream&);
             static  Net*                      fromXml         (Cell* cell, xmlTextReaderPtr reader ); //doit renvoyer NULL en cas d'erreur
+       inline const std::vector<Line*>        getLines        () const;
+                    void                      add             (Line* line);
+                    bool                      remove          (Line* line);
     };
 }
 #endif

@@ -1,4 +1,5 @@
 #include "Net.h"
+#include "Line.h"
 #include  <limits>
 
 using namespace std;
@@ -81,8 +82,8 @@ namespace Netlist{
         }
         return false;
     }
-
-    void Net::toXml (std::ostream& stream){
+//un Net doit connaître et gérer des Line lines_
+    void Net::toXml(std::ostream& stream){
         stream << indent << "<net name=\"" << name_ << "\" type=\"";
         switch(type_){
             case Term::Type::Internal:
@@ -97,6 +98,190 @@ namespace Netlist{
         for (Node* n: nodes_){
             n->toXml(stream);
         }
+        for (Line* l: lines_){
+            l->toXml(stream);//checker si ça marche
+        }
+        indent--;
         stream << --indent << "</net>\n";
+    }
+    
+    //doit renvoyer NULL en cas d'erreur
+    Net* Net::fromXml(Cell* cell, xmlTextReaderPtr reader ){
+       Net* net = nullptr;
+       Node* node = nullptr;
+       Line* line = nullptr;
+        //nettoyage
+        while (xmlTextReaderNodeType(reader) != XML_READER_TYPE_ELEMENT) {
+            int nodeType = xmlTextReaderNodeType(reader);
+            if (nodeType == XML_READER_TYPE_COMMENT ||
+                nodeType == XML_READER_TYPE_WHITESPACE ||
+                nodeType == XML_READER_TYPE_SIGNIFICANT_WHITESPACE ||
+                nodeType == XML_READER_TYPE_TEXT) {
+                //skip les vilain <text> etc
+                int status = xmlTextReaderRead(reader);
+                if (status != 1) {
+                    return nullptr;
+                }
+            } else {
+                break;
+            }
+        }
+        const xmlChar* nodeName = xmlTextReaderConstLocalName(reader);
+        if (xmlStrcmp(nodeName, (const xmlChar*)"net") != 0) {
+            cerr << "[WARNING] Net::fromXml(): Expected <net> tag but found <" << nodeName << "> (line:" << xmlTextReaderGetParserLineNumber(reader) << "), skipping." << endl;
+            return nullptr;
+        }
+        const xmlChar* lineName = xmlTextReaderConstLocalName(reader);
+        if (xmlStrcmp(lineName, (const xmlChar*)"net") != 0) {
+            cerr << "[WARNING] Net::fromXml(): Expected <net> tag but found <" << lineName << "> (line:" << xmlTextReaderGetParserLineNumber(reader) << "), skipping." << endl;
+            return nullptr;
+        }
+
+        string netName = xmlCharToString(xmlTextReaderGetAttribute(reader, (const xmlChar*)"name"));
+        if(!netName.empty()){
+            string typeStr = xmlCharToString(xmlTextReaderGetAttribute(reader, (const xmlChar*)"type"));
+            Term::Type type;
+            if(typeStr == "Internal"){
+                type = Term::Type::Internal;
+            } else if (typeStr == "External"){
+                type = Term::Type::External;
+            } else {
+                cerr << "[ERROR] Net::fromXml(): Invalid type attribute \"" << typeStr << "\" in <net> tag (line:" << xmlTextReaderGetParserLineNumber(reader) << ")." << endl;
+                return nullptr;
+            }
+            net = new Net(cell, netName, type);
+        }
+            //on accede à ses nodes maintenant
+            while(true){
+                int status = xmlTextReaderRead(reader);
+                if (status != 1) {
+                    break;//sortie de boucle
+                }
+                //nettoyage
+                while (xmlTextReaderNodeType(reader) != XML_READER_TYPE_ELEMENT) {
+                    int nodeType = xmlTextReaderNodeType(reader);
+                    if (nodeType == XML_READER_TYPE_COMMENT ||
+                        nodeType == XML_READER_TYPE_WHITESPACE ||
+                        nodeType == XML_READER_TYPE_SIGNIFICANT_WHITESPACE ||
+                        nodeType == XML_READER_TYPE_TEXT) {
+                        //skip les vilain <text> etc
+                        int status = xmlTextReaderRead(reader);
+                        if (status != 1) {
+                            return nullptr;
+                        }
+                    } else {
+                        break;
+                    }
+                
+                    }
+                nodeName = xmlTextReaderConstLocalName(reader);
+                //verif si c'est la fin du net
+                if (xmlStrcmp(nodeName, (const xmlChar*)"net") == 0 && 
+                    xmlTextReaderNodeType(reader) == XML_READER_TYPE_END_ELEMENT) {
+                    break;
+                }
+                if(xmlStrcmp(nodeName, (const xmlChar*)"node") == 0) {
+                    string termName = xmlCharToString(xmlTextReaderGetAttribute(reader, (const xmlChar*)"term"));
+                    string instanceName = xmlCharToString(xmlTextReaderGetAttribute(reader, (const xmlChar*)"instance"));
+                    
+                    //cerr << "[DEBUG] Looking for term='" << termName << "', instance='" << instanceName << "'" << endl;
+                    
+                    Term* term = nullptr;
+                    Instance* inst = nullptr;
+                    if (instanceName.empty()) {
+                        // Cas 1: terme de la cellule (pas d'instance)
+                        term = cell->getTerm(termName);
+                        //cerr << "[DEBUG] Cell term '" << termName << "' " << (term ? "found" : "NOT FOUND") << endl;
+                    } else {
+                        //cas terme d'une instance
+                        inst = cell->getInstance(instanceName);
+                        //cerr << "[DEBUG] Instance '" << instanceName << "' " << (inst ? "found" : "NOT FOUND") << endl;
+                        if (inst) {
+                            term = inst->getTerm(termName);
+                            //cerr << "[DEBUG] Instance term '" << termName << "' " << (term ? "found" : "NOT FOUND") << endl;
+                        }
+                    }
+                    
+                    if (term == nullptr) {
+                        cerr << "[ERROR] Net::fromXml(): Term '" << termName << "' not found" << endl;
+                        return nullptr;
+                    }
+                    string nodeIdStr = xmlCharToString(xmlTextReaderGetAttribute(reader, (const xmlChar*)"id"));
+                    if(!nodeIdStr.empty()){
+                        size_t nodeId = stoi(nodeIdStr);
+                        node = new NodePoint(net, term, nodeId);
+
+                        // Lire les coordonnées si présentes
+                        string xStr = xmlCharToString(xmlTextReaderGetAttribute(reader, (const xmlChar*)"x"));
+                        string yStr = xmlCharToString(xmlTextReaderGetAttribute(reader, (const xmlChar*)"y"));
+
+                        if (!xStr.empty() && !yStr.empty()) {
+                            node->setPosition(stoi(xStr), stoi(yStr));
+                        }
+                        //ajout du node au net
+                        net->nodes_.push_back(node);
+                    } else {
+                        cerr << "[ERROR] Net::fromXml(): Missing id attribute in <node> tag (line:" << xmlTextReaderGetParserLineNumber(reader) << ")." << endl;
+                        return nullptr;
+                    }
+                }
+                // ex : <line source="1" target="3"/>
+                if(xmlStrcmp(lineName, (const xmlChar*)"line") == 0) {
+                    string sourceName = xmlCharToString(xmlTextReaderGetAttribute(reader, (const xmlChar*)"source"));
+                    string targetName = xmlCharToString(xmlTextReaderGetAttribute(reader, (const xmlChar*)"target"));
+                    
+                    //cerr << "[DEBUG] Looking for sourec='" << sourceName << "', instance='" << targetName << "'" << endl;
+                    
+                    Node* src = nullptr;
+                    Node* trg = nullptr;
+                    //if (instanceName.empty()) {
+                        // Cas 1: terme de la cellule (pas d'instance)
+                        //term = cell->getTerm(termName);
+                        //cerr << "[DEBUG] Cell term '" << termName << "' " << (term ? "found" : "NOT FOUND") << endl;
+                    //} else {
+                    //    //cas terme d'une instance
+                    //    inst = cell->getInstance(instanceName);
+                    //    //cerr << "[DEBUG] Instance '" << instanceName << "' " << (inst ? "found" : "NOT FOUND") << endl;
+                    //    if (inst) {
+                    //        term = inst->getTerm(termName);
+                    //        //cerr << "[DEBUG] Instance term '" << termName << "' " << (term ? "found" : "NOT FOUND") << endl;
+                    //    }
+                    //}
+                    src = net->nodes_.at(stoi(sourceName));//pour choper le node au bon index
+                    trg = net->nodes_.at(stoi(targetName));
+                    if(src == nullptr){
+                        cerr << "[ERROR] Net::fromXml(): Source Node '" << sourceName << "' not found" << endl;
+                        return nullptr;
+                    }
+                    if(trg == nullptr){
+                        cerr << "[ERROR] Net::fromXml(): Target Node '" << targetName << "' not found" << endl;
+                        return nullptr;
+                    }
+                    line = new Line (src,trg);
+                    net->lines_.push_back(line);
+                }
+            
+    }
+    return net;
+}
+
+    const std::vector<Line*>& Net::getLines () const{
+        return lines_;
+    }
+    
+    void  Net::add ( Line* line ){
+        if (line) lines_.push_back( line );
+    }
+
+    bool  Net::remove ( Line* line ){
+        if (line) {
+            for ( vector<Line*>::iterator il = lines_.begin(); il != lines_.end() ; ++il ) {
+                if (*il == line) {
+                    lines_.erase( il );
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

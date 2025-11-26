@@ -1,29 +1,30 @@
 #include "Term.h"
 #include "Net.h"
 #include "Node.h"
+#include "XmlUtil.h"
 
 using namespace std;
 
 namespace Netlist{
 
     Term::Term ( Cell* cell, const std :: string & name , Direction direction)
-        :   owner_      (), 
+        :   owner_      (cell), 
             name_       (name),
             direction_  (direction),
-            type_       (),
+            type_       (Type::External),
             net_        (),
-            node_       (Node(this, Netlist::Net::noid))
+            node_       (this, Netlist::Net::noid)
     {
         cell->add(this);
     }
 
     Term::Term ( Instance* inst, const Term* modelTerm)
-        :   owner_      (),
+        :   owner_      (inst),
             name_       (modelTerm->getName()),
             direction_  (modelTerm->getDirection()),
-            type_       (modelTerm->getType()),
+            type_       (Type::Internal),
             net_        (modelTerm->getNet()),
-            node_       (Node(this, (size_t) Net::noid))
+            node_       (this, (size_t) Net::noid)
     {
         inst->add(this);
     }
@@ -53,27 +54,38 @@ namespace Netlist{
     const std::string &   Term::getName         () const{
         return this->name_;
     }
-    Node*                  Term::getNode         (){
+    NodeTerm*                  Term::getNode         (){
         return &this->node_;
     }
     Net*                   Term::getNet          ()const{
         return this->net_;
     }
     Cell*                  Term::getCell         ()const{
-        return (owner_ && !isExternal()) ? static_cast<Cell*>(owner_) : nullptr;
+        return (owner_ && isExternal()) ? static_cast<Cell*>(owner_) : nullptr;
     }
     Cell*                  Term::getOwnerCell    ()const{
         //getOwnerCell() renvoie la Cell dans laquelle l'objet se trouve, ce qui, dans le cas d'un Term d'instance est la Cell possédant celle-ci.
         if(isExternal()){
             return static_cast<Cell*>(owner_); //obligé de cast
         }
-        //sinon il a pas d'owner cell donc on renvoie nullptr
+        //sinon c'est un Term d'Instance, on renvoie la Cell qui possède l'Instance
+        Instance* inst = getInstance();
+        return inst ? inst->getCell() : nullptr;
+    }
+    Instance* Term::getInstance() const {
+    //check si owner_ existe
+    if (!owner_) {
         return nullptr;
     }
-    Instance*              Term::getInstance     ()const{
-        return (owner_ && isExternal()) ? static_cast<Instance*>(owner_) : nullptr;//checker ça
-
+    
+    //si un Term de Cell, owner_ est une Cell, donc pas d'instance
+    if (getCell() != nullptr) {
+        return nullptr;
     }
+    
+    //sinon Term d'Instance
+    return static_cast<Instance*>(owner_);
+}
     Term::Direction              Term::getDirection    ()const{
         return this->direction_;
     }
@@ -123,138 +135,61 @@ namespace Netlist{
                 stream << "Unknown";
                 break;
         }
-        stream << "\"/>\n";
+        stream << "\" x=\"" << node_.getPosition().getX() << "\" y=\"" << node_.getPosition().getY() << "\"/>\n";
     }
     Term* Term::fromXml (Cell* cell, xmlTextReaderPtr reader ) {
-    enum  State { Init           = 0
-                  , BeginTerms
-                  , EndTerms
-                  };
-
-    //const xmlChar* cellTag      = xmlTextReaderConstString( reader, (const xmlChar*)"cell" );
-    //const xmlChar* netsTag      = xmlTextReaderConstString( reader, (const xmlChar*)"nets" );
-    const xmlChar* termsTag     = xmlTextReaderConstString( reader, (const xmlChar*)"terms" );
-    //const xmlChar* instancesTag = xmlTextReaderConstString( reader, (const xmlChar*)"instances" );
-
-    //Cell* cell   = NULL;
-    Term* term = nullptr;
-    State state  = Init;
-
-    while ( true ) {
-        int status = xmlTextReaderRead(reader);
-        if (status != 1) {
-          if (status != 0) {
-            cerr << "[ERROR] Term::fromXml(): Unexpected termination of the XML parser." << endl;
-          }
-          break;
-        }
-
-        switch ( xmlTextReaderNodeType(reader) ) {
-          case XML_READER_TYPE_COMMENT:
-          case XML_READER_TYPE_WHITESPACE:
-          case XML_READER_TYPE_SIGNIFICANT_WHITESPACE:
-            continue;
-        }
-
-        const xmlChar* nodeName = xmlTextReaderConstLocalName( reader );
-
-        switch ( state ) {
-          case Init:
-          if(termsTag == nodeName){
-            state = BeginTerms;
-            string termName = xmlCharToString( xmlTextReaderGetAttribute( reader, (const xmlChar*)"name" ) ); //référence indéfinie vers « Netlist::xmlCharToString[abi:cxx11](unsigned char*) »
-            
-            if (not termName.empty()){
-                string dirString = xmlCharToString( xmlTextReaderGetAttribute( reader, (const xmlChar*)"direction" ) );
-                Direction dir;
-                if(dirString == "In"){
-                    dir = In;
-                }else if(dirString == "Out"){
-                    dir = Out;
-                }else if(dirString == "Inout"){
-                    dir = Inout;
-                }else if(dirString == "Tristate"){
-                    dir = Tristate;
-                }else if(dirString == "Transcv"){
-                    dir = Transcv;
-                }else{
-                    dir = Unknown;
+        Term* term = nullptr;
+        
+        //nettoyage
+        while (xmlTextReaderNodeType(reader) != XML_READER_TYPE_ELEMENT) {
+            int nodeType = xmlTextReaderNodeType(reader);
+            if (nodeType == XML_READER_TYPE_COMMENT ||
+                nodeType == XML_READER_TYPE_WHITESPACE ||
+                nodeType == XML_READER_TYPE_SIGNIFICANT_WHITESPACE ||
+                nodeType == XML_READER_TYPE_TEXT) {
+                //skip les vilain <text> etc
+                int status = xmlTextReaderRead(reader);
+                if (status != 1) {
+                    return nullptr;
                 }
-                //Term temporaire
-                term = new Term ( cell, termName, dir );
-                state = EndTerms;
-                continue;
+            } else {
+                break;
             }
-            break;
-          }
-            
-            //if (cellTag == nodeName) {
-            //  state = BeginCell;
-            //  string cellName = xmlCharToString( xmlTextReaderGetAttribute( reader, (const xmlChar*)"name" ) );
-            //  if (not cellName.empty()) {
-            //    cell = new Cell ( cellName );
-            //    state = BeginTerms;
-            //    continue;
-            //  }
-            //}
-            //break;{
-          case BeginTerms:
-            if ( (nodeName == termsTag) and (xmlTextReaderNodeType(reader) == XML_READER_TYPE_ELEMENT) ) {
-                state = EndTerms;
-                continue;
-            }
-            break;
-          case EndTerms:
-            if ( (nodeName == termsTag) and (xmlTextReaderNodeType(reader) == XML_READER_TYPE_END_ELEMENT) ) {
-              //state = $;
-              continue;
-            }
-            break;
-          //case BeginInstances:
-          //  if ( (nodeName == instancesTag) and (xmlTextReaderNodeType(reader) == XML_READER_TYPE_ELEMENT) ) {
-          //    state = EndInstances;
-          //    continue;
-          //  }
-          //  break;
-          //case EndInstances:
-          //  if ( (nodeName == instancesTag) and (xmlTextReaderNodeType(reader) == XML_READER_TYPE_END_ELEMENT) ) {
-          //    state = BeginNets;
-          //    continue;
-          //  } else {
-          //    if (Instance::fromXml(cell,reader)) continue;
-          //  }
-          //  break;
-          //case BeginNets:
-          //  if ( (nodeName == netsTag) and (xmlTextReaderNodeType(reader) == XML_READER_TYPE_ELEMENT) ) {
-          //    state = EndNets;
-          //    continue;
-          //  }
-          //  break;
-          //case EndNets:
-          //  if ( (nodeName == netsTag) and (xmlTextReaderNodeType(reader) == XML_READER_TYPE_END_ELEMENT) ) {
-          //    state = EndCell;
-          //    continue;
-          //  } else {
-          //    if (Net::fromXml(cell,reader)) continue;
-          //  }
-          //  break;
-          //case EndCell:
-          //  if ( (nodeName == cellTag) and (xmlTextReaderNodeType(reader) == XML_READER_TYPE_END_ELEMENT) ) {
-          //    continue;
-          //  }
-          //break;
-          default:
-            break;
+        }
+        
+        const xmlChar* nodeName = xmlTextReaderConstLocalName(reader);
+        if (xmlStrcmp(nodeName, (const xmlChar*)"term") != 0) {
+            cerr << "[WARNING] Term::fromXml(): Expected <term> tag but found <" << nodeName << "> (line:" << xmlTextReaderGetParserLineNumber(reader) << "), skipping." << endl;
+            return nullptr;
         }
 
-        cerr << "[ERROR] Term::fromXml(): Unknown or misplaced tag <" << nodeName << "> (line:" << xmlTextReaderGetParserLineNumber(reader) << ")." << endl;
-        //renvoie un ptr NULL en cas d'erreur
-        //delete term;
-        term = nullptr; //TODO checker si on tombe sur ces lignes tout le temps
-        break;
-  }
+        string termName = xmlCharToString(xmlTextReaderGetAttribute(reader, (const xmlChar*)"name"));
+        
+        if (!termName.empty()) {
+            string dirString = xmlCharToString(xmlTextReaderGetAttribute(reader, (const xmlChar*)"direction"));
+            Direction dir;
+            if (dirString == "In") {
+                dir = In;
+            } else if (dirString == "Out") {
+                dir = Out;
+            } else if (dirString == "Inout") {
+                dir = Inout;
+            } else if (dirString == "Tristate") {
+                dir = Tristate;
+            } else if (dirString == "Transcv") {
+                dir = Transcv;
+            } else {
+                dir = Unknown;
+            }
+            string xpos = xmlCharToString(xmlTextReaderGetAttribute(reader, (const xmlChar*)"x"));
+            string ypos = xmlCharToString(xmlTextReaderGetAttribute(reader, (const xmlChar*)"y"));
+            term = new Term(cell, termName, dir);
+            if (!xpos.empty() && !ypos.empty()) {
+            term->setPosition(stoi(xpos), stoi(ypos));
+            }
+        }
 
-  return term;
-}
+        return term;
+    }
 
 }
