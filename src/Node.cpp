@@ -123,6 +123,7 @@ namespace Netlist {
         if (   xmlGetIntAttribute( reader, "x", x )
            and xmlGetIntAttribute( reader, "y", y )) {
           new NodePoint( net, (size_t)id, Point(x,y) );
+          std::cout << "[DEBUG] Node::fromXml(): node ajouté : id=" << id << std::endl;
           return true;
         }
         return false;
@@ -153,6 +154,9 @@ namespace Netlist {
 
       term->getNode()->setId( id );
       term->setNet( net );
+      //std::cout << "[DEBUG] Node::fromXml(): Term <" << term->getName() << "> connected to Net <"
+      //          << net->getName() << ">." << std::endl;
+      std::cout << "[DEBUG] Node::fromXml(): node ajouté : id=" << id << ", term=" << term->getName() << std::endl;
       return true;
     }
 

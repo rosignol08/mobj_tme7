@@ -1,3 +1,5 @@
+// -*- explicit-buffer-name: "Box.cpp<M1-MOBJ/7>" -*-
+
 #include "Box.h"
 
 namespace Netlist {

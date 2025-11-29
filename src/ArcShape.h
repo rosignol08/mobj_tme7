@@ -5,15 +5,17 @@
 
 namespace Netlist{
     
-    class BoxShape : public Shape{
+    class ArcShape : public Shape{
         
         private:
             Box     box_;
+            int     start_;
+            int     span_;
 
         public:
-                            BoxShape        ( Symbol*, const Box& );
-                            BoxShape        ( Symbol *, int x1 , int y1 , int x2 , int y2 );
-                           ~BoxShape        ();
+                            ArcShape        ( Symbol*, const Box& , int, int);
+                            ArcShape        ( Symbol *owner, int x1 , int y1 , int x2 , int y2, int start, int span);
+                           ~ArcShape        ();
                     Box     getBoundingBox  () const;
                     void    toXml           (std::ostream&);
             static  Shape*    fromXml         (Symbol*, xmlTextReaderPtr);

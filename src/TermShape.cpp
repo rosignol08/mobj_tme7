@@ -1,39 +1,46 @@
 #include "TermShape.h"
+#include "Symbol.h"
+#include "Cell.h"
+#include "Term.h"
+#include "XmlUtil.h"
+#include <string>
 
 namespace Netlist{
 
-  TermShape::TermShape ( Symbol * owner , string name , int x1 , int y1 )
-    : Shape ( owner ) , term_ ( NULL ), x1_ ( x1 ), y1_ ( y1 )
+  TermShape::TermShape ( Symbol * owner , std::string name , int x , int y , NameAlign name_align )
+    : Shape ( owner ) , term_ ( NULL ), align_ ( name_align ), x_ ( x ), y_ ( y )
   {
-    Cell * cell = getCell ();
-    term_ = cell -> getTerm ( name );
+    Cell * cell = owner->getCell();
+    term_ = cell->getTerm ( name );
   }
 
   TermShape::~TermShape () { }
 
-  Box TermShape :: getBoundingBox () const
-  { return Box ( x1_ , y1_ , x1_ , y1_ ); }
+  Box TermShape::getBoundingBox () const
+  { return Box ( x_ , y_ , x_ , y_ ); }
 
   void TermShape::toXml(std::ostream& stream) {
-		stream 	<< "<term x1=\"" << X1() << "\""
-					<< " y1=\"" << x1_ << "\""
-					<< " x2=\"" << y1_ << "\""
-					<< " align=\"" << align_ << "\"/>";
+		stream 	<< indent << "<term name=\"" << term_->getName() << "\""
+				<< " x=\"" << x_ << "\""
+				<< " y=\"" << y_ << "\""
+				<< " align=\"" << align_ << "\"/>" << std::endl;
 	}
 
-	bool TermShape::fromXml (Symbol* owner, xmlTextReaderPtr reader) {
-		NameAlign name_align;
-    string name = xmlCharToString( xmlTextReaderGetAttribute( reader, (const xmlChar*)"name" ) );
+	Shape* TermShape::fromXml (Symbol* owner, xmlTextReaderPtr reader) {
+		NameAlign name_align = TopLeft;
+		int x1 = 0, y1 = 0;//, x2 = 0, y2 = 0;
+		std::string name = xmlCharToString( xmlTextReaderGetAttribute( reader, (const xmlChar*)"name" ) );
 		xmlGetIntAttribute(reader, "x1", x1);
 		xmlGetIntAttribute(reader, "y1", y1);
-		string align = xmlCharToString( xmlTextReaderGetAttribute( reader, (const xmlChar*)"align" ) );
+		//xmlGetIntAttribute(reader, "x2", x2);
+		//xmlGetIntAttribute(reader, "y2", y2);
+		std::string align = xmlCharToString( xmlTextReaderGetAttribute( reader, (const xmlChar*)"align" ) );
   
-    if      (align == "top_right")    { name_align = TopRight; }
-    else if (align == "top_left")     { name_align = TopLeft; }
-    else if (align == "bottom_left")  { name_align = BottomLeft; }
-    else if (align == "bottom_right") { name_align = BottomRight; }
+		if      (align == "top_right")    { name_align = TopRight; }
+		else if (align == "top_left")     { name_align = TopLeft; }
+		else if (align == "bottom_left")  { name_align = BottomLeft; }
+		else if (align == "bottom_right") { name_align = BottomRight; }
 
-		TermShape* shape = new TermShape(owner, name, x1, y1, name_align);
-		return shape;
+		return new TermShape(owner, name, x1, y1, name_align);
 	}
 }

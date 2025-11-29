@@ -1,3 +1,5 @@
+// -*- explicit-buffer-name: "Line.cpp<M1-MOBJ/7>" -*-
+
 #include "XmlUtil.h"
 #include "Line.h"
 #include "Cell.h"
@@ -26,8 +28,10 @@ namespace Netlist {
   }
 
 
-  void  Line::toXml ( ostream& stream ) const{
-    stream << indent << "<Line source=\"" << source_->getId() <<    "\" target=\"" << target_->getId() << "\"/>\n";
+  void  Line::toXml ( ostream& stream ) const
+  {
+    stream << indent << "<Line source=\"" << source_->getId()
+                     <<    "\" target=\"" << target_->getId() << "\"/>\n";
   }
 
 
@@ -42,15 +46,35 @@ namespace Netlist {
       xmlGetIntAttribute( reader, "source", idSource );
       xmlGetIntAttribute( reader, "target", idTarget );
 
-      Node*      source = net->getNode( idSource );
-      Node*      target = net->getNode( idTarget );
+      Node* source = nullptr;
+      Node* target = nullptr;
+      
+      const std::vector<Node*>& nodes = net->getNodes();
+      int id_source = -1;
+      int id_target = -1;
+      for (Node* node : nodes) {
+        id_source = node->getId();
+        if (node->getId() == static_cast<size_t>(idSource)) {
+          source = node;
+        }
+        id_target = node->getId();
+        if (node->getId() == static_cast<size_t>(idTarget)) {
+          target = node;
+        }
+      }
 
       if (not source) {
+        std::cout << "[DEBUG] Line::fromXml(): Checking Node id " << id_source << " against source id "
+                  << idSource << "." << std::endl;
         cerr << "[ERROR] Line::fromXml(): Unknown source node id:" << idSource << " (line:"
              << xmlTextReaderGetParserLineNumber(reader) << ")." << endl;
         return false;
       }
+
+      
       if (not target) {
+        std::cout << "[DEBUG] Line::fromXml(): Checking Node id " << id_target << " aulieu de "
+                  << idTarget << "." << std::endl;
         cerr << "[ERROR] Line::fromXml(): Unknown target node id:" << idTarget << " (line:"
              << xmlTextReaderGetParserLineNumber(reader) << ")." << endl;
         return false;

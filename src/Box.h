@@ -1,3 +1,5 @@
+// -*- explicit-buffer-name: "Box.h<M1-MOBJ/7>" -*-
+
 #ifndef NETLIST_BOX_H
 #define NETLIST_BOX_H
 

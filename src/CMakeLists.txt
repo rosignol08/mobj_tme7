@@ -14,11 +14,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set (CMAKE_INSTALL_PREFIX       "../install" )
 
 include_directories( ${SCHEMATIC_SOURCE_DIR} ${LIBXML2_INCLUDE_DIR})
-set( includes Indentation.h Term.h Net.h Instance.h Point.h Node.h Cell.h XmlUtil.h Box.h Line.h BoxShape.h TermShape.h LineShape.h Symbol.h)
+set( includes Indentation.h Term.h Net.h Instance.h Point.h Node.h Cell.h Box.h Line.h Shape.h LineShape.h BoxShape.h TermShape.h Symbol.h Shape.h EllipseShape.h ArcShape.h)
 
-set( cpps Indentation.cpp Term.cpp Net.cpp Instance.cpp Point.cpp Node.cpp Cell.cpp Main.cpp XmlUtil.cpp Box.cpp Line.cpp BoxShape.cpp TermShape.cpp LineShape.cpp Symbol.cpp)
+set( cpps Indentation.cpp Term.cpp Net.cpp Instance.cpp Point.cpp Node.cpp Cell.cpp Main.cpp XmlUtil.cpp XmlUtil.h Box.cpp Line.cpp Shape.cpp LineShape.cpp BoxShape.cpp TermShape.cpp Symbol.cpp EllipseShape.cpp ArcShape.cpp )
 
 add_executable ( tme7 ${cpps} ) 
 install ( TARGETS tme7 DESTINATION bin ) 
 install ( FILES ${includes} DESTINATION include ) 
 target_link_libraries ( tme7 ${LIBXML2_LIBRARIES} )
+

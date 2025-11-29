@@ -16,7 +16,7 @@ namespace Netlist{
                            ~LineShape       ();
                     Box     getBoundingBox  () const;
                     void    toXml           (std::ostream&);
-            static  bool    fromXml         (Symbol*, xmlTextReaderPtr);
-    }
+            static  Shape*  fromXml         (Symbol*, xmlTextReaderPtr);
+    };
 
 }

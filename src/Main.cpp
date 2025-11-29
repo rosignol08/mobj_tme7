@@ -1,3 +1,5 @@
+// -*- explicit-buffer-name: "Main.cpp<M1-MOBJ/7>" -*-
+
 #include <string>
 #include <sstream>
 #include <iostream>

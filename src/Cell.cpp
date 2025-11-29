@@ -1,3 +1,5 @@
+// -*- explicit-buffer-name: "Cell.cpp<M1-MOBJ/8-10>" -*-
+
 #include  <cstdlib>
 #include  <fstream>
 #include  "XmlUtil.h"
@@ -30,7 +32,7 @@ namespace Netlist {
 
   Cell* Cell::load ( const string& cellName )
   {
-    string           cellFile = "./cells/" + cellName + ".xml";
+    string           cellFile = "../work/cells/" + cellName + ".xml";
     xmlTextReaderPtr reader;
 
     cerr << "Loading <" << cellFile << ">" << endl;
@@ -328,10 +330,13 @@ namespace Netlist {
           break;
         case BeginSymbol:  // TME7
           if ( (nodeName == symbolTag) and (xmlTextReaderNodeType(reader) == XML_READER_TYPE_ELEMENT) ) {
+            std::cout << "commence Symbol::fromXml" << std::endl;
             if (Symbol::fromXml(cell,reader)) {
+              std::cout << "fait Symbol::fromXml" << std::endl;
               state = EndCell;
               continue;
             }
+            else {std::cout << "Symbol::fromXml pas fait" << std::endl;}
           }
           break;
         case EndCell:
