@@ -67,12 +67,13 @@ namespace Netlist {
 
   Cell::Cell ( const string& name )
     : symbol_   (this)  // TME7
-    , name_     (name) 
+    , name_     (name)
     , terms_    ()
     , instances_()
     , nets_     ()
     , maxNetIds_(0)
   {
+    //std::cout << "le symbole est :" << this->getSymbol() << std::endl;
     if (find(name)) {
       cerr << "[ERROR] Attempt to create duplicate of Cell <" << name << ">.\n"
            << "        Aborting..." << endl;

@@ -53,9 +53,15 @@ namespace Netlist
 
     void Symbol::add(Shape *shape)
     {
-        shapes_.push_back(shape);
-    }
-
+        //Symbol* s = owner_->getSymbol();
+        if (owner_->getSymbol() != this) {
+            owner_->getSymbol()->add(shape);
+        }else{
+            shapes_.push_back(shape);
+        }
+        return;
+  }
+  
     void Symbol::remove(Shape *shape)
     {
         for (std::vector<Shape *>::iterator ishape = shapes_.begin(); ishape != shapes_.end(); ++ishape)

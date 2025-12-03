@@ -127,7 +127,7 @@ namespace Netlist{
                 stream << "Unknown";
                 break;
         }
-        stream << "\"/>\n";
+        stream << "\" x=\"" << node_.getPosition().getX() << "\" y=\"" << node_.getPosition().getY() << "\"/>\n";
     }
 
     Term* Term::fromXml (Cell* cell, xmlTextReaderPtr reader ) {
@@ -149,6 +149,11 @@ namespace Netlist{
             else                                dir = Unknown;
             if (!termName.empty()) term = new Term ( cell, termName, dir );
             else cerr << "[ERROR] Term::fromXml(): Unknown or misplaced tag <" << nodeName << "> (line:" << xmlTextReaderGetParserLineNumber(reader) << ")." << endl;
+            string xpos = xmlCharToString(xmlTextReaderGetAttribute(reader, (const xmlChar*)"x"));
+            string ypos = xmlCharToString(xmlTextReaderGetAttribute(reader, (const xmlChar*)"y"));
+            if (!xpos.empty() && !ypos.empty()) {
+            term->setPosition(stoi(xpos), stoi(ypos));
+            }
         }
         return term;
     }

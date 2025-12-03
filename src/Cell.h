@@ -61,8 +61,6 @@ namespace Netlist {
   inline const std::vector<Instance*>& Cell::getInstances () const { return instances_; };
   inline const std::vector<Term*>&     Cell::getTerms     () const { return terms_; };
   inline const std::vector<Net*>&      Cell::getNets      () const { return nets_; };
-
-
 }  // Netlist namespace.
 
 #endif  // NETLIST_CELL_H

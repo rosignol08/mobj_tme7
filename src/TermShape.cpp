@@ -21,9 +21,14 @@ namespace Netlist{
 
   void TermShape::toXml(std::ostream& stream) {
 		stream 	<< indent << "<term name=\"" << term_->getName() << "\""
-				<< " x=\"" << x_ << "\""
-				<< " y=\"" << y_ << "\""
-				<< " align=\"" << align_ << "\"/>" << std::endl;
+				<< " x1=\"" << x_ << "\""
+				<< " y1=\"" << y_ << "\""
+				<< " align=\"";
+				if (align_ == Netlist::TopRight )   {stream << "top_right";}
+				if (align_ == Netlist::TopLeft)     {stream << "top_left"; }
+				if (align_ == Netlist::BottomLeft)  {stream << "bottom_left"; }
+				if (align_ == Netlist::BottomRight) {stream << "bottom_right"; } 
+				stream << "\"/>" << std::endl;
 	}
 
 	Shape* TermShape::fromXml (Symbol* owner, xmlTextReaderPtr reader) {

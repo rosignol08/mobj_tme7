@@ -36,24 +36,35 @@ namespace Netlist{
     Cell* Net::getCell()const{
         return this->owner_;
     }
+
     //retourne le nom du net
     const std::string &Net::getName()const{
         return this->name_;
-
     }
+    
     //retourne l'id du net
     unsigned int Net::getId()const{
         return this->id_;
         
     }
+    
     //retourne le type du net
     Term::Type Net::getType()const{
         return this->type_;
 
     }
+    
     //retourne le vecteur de noeuds
     const std::vector<Node*>& Net::getNodes() const{
         return this->nodes_;
+    }
+    
+    Node* Net::getNode (size_t id) const {
+        for ( vector<Node*>::const_iterator inode=nodes_.begin(); inode!=nodes_.end(); inode++) {
+            if (*inode != nullptr && (*inode)->getId() == id) return *inode;
+        }
+        
+        return nullptr;
     }
 
     //on doit trouver l'index de la première case libre dans le tableau 
@@ -67,14 +78,34 @@ namespace Netlist{
         }//pas de case libre return size du tab
         return nodes_.size();
     }
+
     //ajoute un noeud au net
     void Net::add(Node * node){
-        size_t id = this->getFreeNodeId();
-        if (id <= this->nodes_.size()){
+        //si ça a dejà un id on l'inserer et redimentionne le vecteur
+        if(node->getId() == Netlist::Node::noid || node->getId() == 0){
+            size_t id = this->getFreeNodeId();
             node->setId(id); // associe l'id du noeud
-            this->nodes_.push_back(node);
+            if (id == nodes_.size()){
+                this->nodes_.push_back(node);
+            }
+            else{
+                while (id >= nodes_.size() ){
+                    this->nodes_.push_back(nullptr);
+                }
+                this->nodes_[id] = node;
+            }
+        }else{
+            //redimentionement vecteur
+            while (node->getId() >= nodes_.size()){
+                this->nodes_.push_back(nullptr);
+                std::cout << "id noeud : " << node->getId() << std::endl;
+                std::cout << "taille vecteur : " << nodes_.size() << std::endl;
+                std::cout << "nouvelle capacité : " << nodes_.capacity() << std::endl;
+            }
+            this->nodes_[node->getId()] = node;
         }
     }
+
     //enlève un noeud au net
     bool Net::remove(Node * node){
         for(size_t i = 0; i < this->nodes_.size(); i++){
@@ -112,10 +143,11 @@ namespace Netlist{
                 stream << "External";
                 break;
         }
-        stream << "\"/>\n";
+        stream << "\">\n";
         indent++;
         for (Node* n: nodes_){
-            n->toXml(stream);
+            if(n != nullptr)
+            {n->toXml(stream);}
         }
         for (Line* l: lines_){
             l->toXml(stream);
@@ -161,9 +193,12 @@ namespace Netlist{
                     continue;
             }
 
+            //nodeName = xmlTextReaderConstLocalName( reader );
             if (nodeName == netTag && (xmlTextReaderNodeType(reader) == XML_READER_TYPE_END_ELEMENT)) break;
             else if(Node::fromXml(net, reader)) continue;
             else if(Line::fromXml(net, reader)) continue;
+            
+            cerr << "[ERROR] Net::fromXml(): Unknown or misplaced tag <" << nodeName << "> (line:" << xmlTextReaderGetParserLineNumber(reader) << ")." << endl;
             break;
         }
 

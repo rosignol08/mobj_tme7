@@ -30,11 +30,11 @@ namespace Netlist {
 
   void  Line::toXml ( ostream& stream ) const
   {
-    stream << indent << "<Line source=\"" << source_->getId()
+    stream << indent << "<line source=\"" << source_->getId()
                      <<    "\" target=\"" << target_->getId() << "\"/>\n";
   }
 
-
+/*
   bool   Line::fromXml ( Net* net, xmlTextReaderPtr reader )
   {
     const xmlChar* lineTag  = xmlTextReaderConstString        ( reader, (const xmlChar*)"line" );
@@ -56,11 +56,19 @@ namespace Netlist {
         id_source = node->getId();
         if (node->getId() == static_cast<size_t>(idSource)) {
           source = node;
+          std::cout << " pas erreur au node :" << node->getId() << endl;
+        }
+        else {
+          std::cout << " erreur au node :" << node->getId() << endl;
         }
         id_target = node->getId();
         if (node->getId() == static_cast<size_t>(idTarget)) {
           target = node;
         }
+                else {
+          std::cout << " erreur à la target :" << endl;
+        }
+
       }
 
       if (not source) {
@@ -87,5 +95,36 @@ namespace Netlist {
     return false;
   }
 
+*/
+  bool   Line::fromXml ( Net* net, xmlTextReaderPtr reader )
+  {
+    const xmlChar* lineTag  = xmlTextReaderConstString        ( reader, (const xmlChar*)"line" );
+    const xmlChar* nodeName = xmlTextReaderConstLocalName     ( reader );
 
+    if (lineTag == nodeName) {
+      int idSource = 0;
+      int idTarget = 0;
+      xmlGetIntAttribute( reader, "source", idSource );
+      xmlGetIntAttribute( reader, "target", idTarget );
+
+      Node*      source = net->getNode( idSource );
+      Node*      target = net->getNode( idTarget );
+
+      if (not source) {
+        cerr << "[ERROR] Line::fromXml(): Unknown source node id:" << idSource << " (line:"
+             << xmlTextReaderGetParserLineNumber(reader) << ")." << endl;
+        return false;
+      }
+      if (not target) {
+        cerr << "[ERROR] Line::fromXml(): Unknown target node id:" << idTarget << " (line:"
+             << xmlTextReaderGetParserLineNumber(reader) << ")." << endl;
+        return false;
+      }
+
+      net->add( new Line(source,target) );
+      return true;
+    }
+
+    return false;
+  }
 }  // Netlist namespace.

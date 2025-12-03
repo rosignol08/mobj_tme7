@@ -30,6 +30,7 @@ namespace Netlist {
                     unsigned int              getId           () const;
                     Term::Type                getType         () const;
                     const std::vector<Node*>& getNodes        () const;
+                    Node*                     getNode         (size_t id) const;
                     size_t                    getFreeNodeId   () const;
                     void                      add             ( Node* );
                     bool                      remove          ( Node* );

@@ -100,7 +100,8 @@ namespace Netlist {
       stream << indent << "<node term=\"" << term_->getName()
              << "\" id=\""       << id_;
     }
-    stream << "\" x=\"" << position_.getX() << "\" y=\"" << position_.getY() << "\"/>\n";
+    //stream << "\" x=\"" << position_.getX() << "\" y=\"" << position_.getY() << "\"/>\n";
+    stream << "\"/>\n";
   }
 
 
